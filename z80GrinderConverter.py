@@ -1,0 +1,199 @@
+import os
+import sys
+
+def read_data_header(file_in):
+    id = file_in.read(4).decode()
+    chunk_size = int.from_bytes(file_in.read(4), 'little')
+    if id != "data":
+        print("Unknown chunk id", id)
+        return 0
+    print("              ID:", id)
+    print("      Chunk Size:", chunk_size)
+    data = bytearray(chunk_size)
+    file_in.readinto(data)
+    for i in range(len(data)):
+        if i % 8 == 0:
+            print("\n  db", end="")
+        d = "0x{:02x}".format(data[i])
+        if i % 8 == 0:
+            print(" " + d, end="")
+        else:
+            print(", " + d, end="")
+    print("")
+    return chunk_size
+
+def read_fmt_header(file_in):
+    id_ = file_in.read(4).decode()  # Assuming the file is opened in binary mode
+    chunk_size = int.from_bytes(file_in.read(4), 'little') # read_int32(file_in)
+    format_code = int.from_bytes(file_in.read(2), 'little') # read_int16(file_in)
+    channels = int.from_bytes(file_in.read(2), 'little')
+    sample_rate = int.from_bytes(file_in.read(4), 'little')
+    bytes_per_second = int.from_bytes(file_in.read(4), 'little')
+    bytes_per_sample = int.from_bytes(file_in.read(2), 'little')
+    bits_per_sample = int.from_bytes(file_in.read(2), 'little')
+
+    if id_ != "fmt ":
+        print("Unknown chunk id " + id_)
+        return 0
+
+    print("              ID:", id_)
+    print("      Chunk Size:", chunk_size)
+    print("     Format Code:", format_code)
+    print("         Channels:", channels)
+    print("     Sample Rate:", sample_rate)
+    print("Bytes Per Second:", bytes_per_second)
+    print("Bytes Per Sample:", bytes_per_sample)
+    print(" Bits Per Sample:", bits_per_sample)
+
+    if bits_per_sample != 8 or channels != 1:
+        print("This wav isn't in the right format.")
+        return 0
+
+    return chunk_size
+
+def read_riff_header(file_in):
+    id = file_in.read(4).decode()
+    if id != "RIFF":
+        print("Not a RIFF file.")
+        return 0
+    wav_size = int.from_bytes(file_in.read(4), 'little')
+    format = file_in.read(4).decode()
+    if format != "WAVE":
+        print("Not a WAV file.")
+        return 0
+    print("              ID:", id)
+    print("            Size:", wav_size)
+    print("          Format:", format)
+    return wav_size
+
+def wav2dac(file_name):
+    with open(file_name, 'rb') as file:
+        if (read_riff_header(file) == 0):
+            return
+        if (read_fmt_header(file) == 0):
+            return        
+        if (read_data_header(file) == 0):
+            return
+        
+    
+def bin2java(input_file_path, output_file_path=None):
+    class_name = os.path.splitext(os.path.basename(input_file_path))[0]  # Get the base name without extension
+    if output_file_path is None:
+        output_file_path = f"{class_name}.java"
+
+    try:
+        with open(input_file_path, "rb") as file_in, open(output_file_path, "w") as file_out:
+            data = file_in.read()
+
+        file_size = len(data)
+
+        file_out.write(f"public class {class_name}\n{{\n")
+        file_out.write("  public static byte[] code =\n  {\n")
+
+        for i in range(file_size):
+            if i % 8 == 0:
+                file_out.write("\n   ")
+
+            file_out.write(f"{data[i]:4}, ")
+
+        file_out.write("\n  };\n")
+        file_out.write("}\n")
+
+    except Exception as e:
+        print(e)
+        exit(1)
+
+def java2bin(java_file_name):
+    # print("INFO: java2bin - Reverse operation of bin2java")
+
+    # if len(sys.argv) < 2:
+    #     print(f"Usage: {sys.argv[0]} <javafile> [<binfile>]")
+    #     exit(0)
+
+    java_file_name = sys.argv[1]
+
+    if len(sys.argv) == 3:
+        bin_file_name = sys.argv[2]
+    else:
+        dot_index = java_file_name.rfind(".")
+        if dot_index != -1:
+            bin_file_name = java_file_name[:dot_index] + ".bin"
+        else:
+            bin_file_name = java_file_name + ".bin"
+
+    try:
+        with open(java_file_name, "r") as java_file:
+            java_file_content = java_file.read()
+    except Exception as e:
+        print(e)
+        exit(1)
+
+    start = java_file_content.find("{")
+    end = java_file_content.find("}")
+    byte_string = java_file_content[start+1:end]
+    byte_string = byte_string.replace("\n", "").replace(" ", "")
+
+    byte_values = byte_string.split(",")
+    data = bytearray()
+
+    for byte_value in byte_values:
+        if byte_value:
+            data.append(int(byte_value))
+
+    try:
+        with open(bin_file_name, "wb") as bin_file:
+            bin_file.write(data)
+    except Exception as e:
+        print(e)
+        exit(1)
+
+    print(f"INFO: Binary file '{bin_file_name}' created successfully")
+
+# Additional functions for wav, dac, and other formats can be defined here.
+
+def show_help():
+    help_message = """
+    Usage: [script] -in <input_format> -out <output_format> <file_name>
+
+    This script supports conversion between the following formats: wav, dac, bin, java
+
+    Examples:
+    [script] -in bin -out java somefile.bin    # Convert from BIN to Java
+    [script] -in java -out bin somefile.java   # Convert from Java to BIN
+    [script] -in wav -out bin somefile.wav     # Convert from WAV to BIN
+    [script] -in dac -out bin somefile_dac.asm     # Convert from DAC to BIN
+    ... and so on for other supported format conversions.
+    """
+    print(help_message)
+
+if __name__ == "__main__":
+    if len(sys.argv) < 5 or '-h' in sys.argv or '--help' in sys.argv:
+        show_help()
+        exit(0)
+    
+    # input_format = None
+    # output_format = None
+    # file_name = None
+
+    # Parse the command line arguments
+    try:
+        input_index = sys.argv.index("-in") + 1
+        output_index = sys.argv.index("-out") + 1
+        in_file_name = sys.argv[4]
+        input_format = sys.argv[input_index]
+        output_format = sys.argv[output_index]
+    except (ValueError, IndexError):
+        show_help()
+        exit(1)
+    
+    # Add checks for formats and call the respective function based on the input and output formats
+    if input_format == "wav" and output_format == "dac" or output_format == "asm":
+        wav2dac(in_file_name)
+    elif input_format == "bin" and output_format == "java":
+        bin2java(in_file_name)
+    elif input_format == "java" and output_format == "bin":
+        java2bin(in_file_name)
+    # Additional format checks and function calls can be added here based on new functions.
+    else:
+        print("Unsupported format conversion.")
+        show_help()
