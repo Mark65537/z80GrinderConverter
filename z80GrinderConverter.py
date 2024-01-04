@@ -98,19 +98,24 @@ def read_riff_header(file_in):
     print("          Format:", format)
     return wav_size
 
-def wav2dac(file_name):
+def wav2file(file_name, output_type='dac'):
     with open(file_name, 'rb') as file:
-        if (read_riff_header(file) == 0):
+        if read_riff_header(file) == 0:
             return
-        if (read_fmt_header(file) == 0):
-            return   
+        if read_fmt_header(file) == 0:
+            return
 
-        chunk_size = read_data_header(file)     
-        if (chunk_size == 0):
+        chunk_size = read_data_header(file)
+        if chunk_size == 0:
             return
         else:
             data = bytearray(chunk_size)
             file.readinto(data)
+            # Choose the type based on the output_type parameter
+            if output_type == 'bin':
+                write_data_to(file.name, data, type='bin')
+            else:
+                write_data_to(file.name, data)
     
 def bin2java(input_file_path, output_file_path=None):
     class_name = os.path.splitext(os.path.basename(input_file_path))[0]  # Get the base name without extension
@@ -224,10 +229,11 @@ if __name__ == "__main__":
     
     # Add checks for formats and call the respective function based on the input and output formats
     if input_format == "wav" and output_format == "dac" or output_format == "asm":
-        wav2dac(in_file_name)
+        wav2file(in_file_name, output_type = 'dac')
     elif input_format == "wav" and output_format == "bin":
-        wav2dac(in_file_name)
-        dac2bin(in_file_name)
+        wav2file(in_file_name, output_type = 'bin')
+        # wav2dac(in_file_name)
+        # dac2bin(in_file_name)
     elif input_format == "bin" and output_format == "java":
         bin2java(in_file_name)
     elif input_format == "java" and output_format == "bin":
