@@ -1,28 +1,59 @@
 import os
 import sys
 
+def write_data_to(file_name, data, type='dac'):
+    base_name = os.path.splitext(file_name)[0]
+    if type == 'dac':
+        with open(base_name + "_dac.asm", "w") as file_out:
+            for i in range(len(data)):
+                if i % 8 == 0:
+                    file_out.write("\n  db")
+                d = f"${data[i]:02x}"
+                if i % 8 == 0:
+                    file_out.write(" " + d)
+                else:
+                    file_out.write(", " + d)
+    elif type == 'bin':
+        with open(f"{base_name}.{type}", "wb") as file_out:
+            for d in data:
+                file_out.write(bytes([d]))
+
+
+    
+            
 def read_data_header(file_in):
-    id = file_in.read(4).decode()
+    print("Data Header:")
+
+    id = file_in.read(4).decode()  
+    if id == '\x00\x00da': # Почему то иногда битность(bitsPerSample) содержиться в 4 байтах из за этого заоловок data сдвигается на 2 байта
+        file_in.seek(-2, 1)
+        id = file_in.read(4).decode()
+
     chunk_size = int.from_bytes(file_in.read(4), 'little')
     if id != "data":
         print("Unknown chunk id", id)
         return 0
     print("              ID:", id)
     print("      Chunk Size:", chunk_size)
-    data = bytearray(chunk_size)
-    file_in.readinto(data)
-    for i in range(len(data)):
-        if i % 8 == 0:
-            print("\n  db", end="")
-        d = "0x{:02x}".format(data[i])
-        if i % 8 == 0:
-            print(" " + d, end="")
-        else:
-            print(", " + d, end="")
-    print("")
     return chunk_size
 
+
+    # base_name = os.path.splitext(file_in.name)[0]
+    # with open(base_name + "_dac.asm", "w") as file_out:
+    #     for i in range(len(data)):
+    #         if i % 8 == 0:
+    #             file_out.write("\n  db")
+                
+    #         d = "0x{:02x}".format(data[i])
+    #         if i % 8 == 0:
+    #             file_out.write(" " + d)
+    #         else:
+    #             file_out.write(", " + d)
+    # return chunk_size
+
 def read_fmt_header(file_in):
+    print("FMT Header:")
+
     id_ = file_in.read(4).decode()  # Assuming the file is opened in binary mode
     chunk_size = int.from_bytes(file_in.read(4), 'little') # read_int32(file_in)
     format_code = int.from_bytes(file_in.read(2), 'little') # read_int16(file_in)
@@ -52,6 +83,7 @@ def read_fmt_header(file_in):
     return chunk_size
 
 def read_riff_header(file_in):
+    print("RIFF Header:")
     id = file_in.read(4).decode()
     if id != "RIFF":
         print("Not a RIFF file.")
@@ -71,10 +103,14 @@ def wav2dac(file_name):
         if (read_riff_header(file) == 0):
             return
         if (read_fmt_header(file) == 0):
-            return        
-        if (read_data_header(file) == 0):
+            return   
+
+        chunk_size = read_data_header(file)     
+        if (chunk_size == 0):
             return
-        
+        else:
+            data = bytearray(chunk_size)
+            file.readinto(data)
     
 def bin2java(input_file_path, output_file_path=None):
     class_name = os.path.splitext(os.path.basename(input_file_path))[0]  # Get the base name without extension
@@ -179,7 +215,7 @@ if __name__ == "__main__":
     try:
         input_index = sys.argv.index("-in") + 1
         output_index = sys.argv.index("-out") + 1
-        in_file_name = sys.argv[4]
+        in_file_name = sys.argv[5]
         input_format = sys.argv[input_index]
         output_format = sys.argv[output_index]
     except (ValueError, IndexError):
@@ -189,6 +225,9 @@ if __name__ == "__main__":
     # Add checks for formats and call the respective function based on the input and output formats
     if input_format == "wav" and output_format == "dac" or output_format == "asm":
         wav2dac(in_file_name)
+    elif input_format == "wav" and output_format == "bin":
+        wav2dac(in_file_name)
+        dac2bin(in_file_name)
     elif input_format == "bin" and output_format == "java":
         bin2java(in_file_name)
     elif input_format == "java" and output_format == "bin":
