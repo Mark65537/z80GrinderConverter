@@ -123,72 +123,72 @@ def bin2java(input_file_path, output_file_path=None):
         output_file_path = f"{class_name}.java"
 
     try:
-        with open(input_file_path, "rb") as file_in, open(output_file_path, "w") as file_out:
+        with open(input_file_path, "rb") as file_in:
             data = file_in.read()
 
         file_size = len(data)
 
-        file_out.write(f"public class {class_name}\n{{\n")
-        file_out.write("  public static byte[] code =\n  {\n")
+        with open(output_file_path, "w") as file_out:
+            file_out.write(f"public class {class_name}\n{{\n")
+            file_out.write("  public static byte[] z80_code =\n  {\n")
+            for i in range(file_size):
+                if i % 8 == 0:
+                    file_out.write("\n   ") # New line every 8 bytes
 
-        for i in range(file_size):
-            if i % 8 == 0:
-                file_out.write("\n   ")
-
-            file_out.write(f"{data[i]:4}, ")
-
-        file_out.write("\n  };\n")
-        file_out.write("}\n")
+                file_out.write(f"{data[i]-128}, ")
+            file_out.write("\n  };\n")
+            file_out.write("}\n")
 
     except Exception as e:
         print(e)
         exit(1)
 
-def java2bin(java_file_name):
+def java2bin(input_file_path, output_file_path=None):
     # print("INFO: java2bin - Reverse operation of bin2java")
 
     # if len(sys.argv) < 2:
     #     print(f"Usage: {sys.argv[0]} <javafile> [<binfile>]")
     #     exit(0)
 
-    java_file_name = sys.argv[1]
+    # if len(sys.argv) == 3:
+    #     bin_file_name = sys.argv[2]
+    # else:
+    #     dot_index = java_file_name.rfind(".")
+    #     if dot_index != -1:
+    #         bin_file_name = java_file_name[:dot_index] + ".bin"
+    #     else:
+    #         bin_file_name = java_file_name + ".bin"
 
-    if len(sys.argv) == 3:
-        bin_file_name = sys.argv[2]
-    else:
-        dot_index = java_file_name.rfind(".")
-        if dot_index != -1:
-            bin_file_name = java_file_name[:dot_index] + ".bin"
-        else:
-            bin_file_name = java_file_name + ".bin"
+    class_name = os.path.splitext(os.path.basename(input_file_path))[0]  # Get the base name without extension
+    if output_file_path is None:
+        output_file_path = f"{class_name}.bin"
 
     try:
-        with open(java_file_name, "r") as java_file:
+        with open(input_file_path, "r") as java_file:
             java_file_content = java_file.read()
-    except Exception as e:
-        print(e)
-        exit(1)
 
-    start = java_file_content.find("{")
-    end = java_file_content.find("}")
-    byte_string = java_file_content[start+1:end]
-    byte_string = byte_string.replace("\n", "").replace(" ", "")
 
-    byte_values = byte_string.split(",")
-    data = bytearray()
+        start = java_file_content.find("{", java_file_content.find("{") + 1)
+        end = java_file_content.find("}")
+        byte_string = java_file_content[start+1:end]
+        byte_string = byte_string.replace("\n", "").replace(" ", "")
 
-    for byte_value in byte_values:
-        if byte_value:
-            data.append(int(byte_value))
+        byte_values = byte_string.split(",")
+        data = bytearray()
 
-    try:
-        with open(bin_file_name, "wb") as bin_file:
+        for byte_value in byte_values:
+            if byte_value:
+                byte_int = int(byte_value) + 128
+                data.append(byte_int)
+
+
+        with open(output_file_path, "wb") as bin_file:
             bin_file.write(data)
     except Exception as e:
         print(e)
         exit(1)
 
-    print(f"INFO: Binary file '{bin_file_name}' created successfully")
+    print(f"INFO: Binary file '{output_file_path}' created successfully")
 
 # Additional functions for wav, dac, and other formats can be defined here.
 
@@ -232,10 +232,10 @@ if __name__ == "__main__":
         wav2file(in_file_name, output_type = 'dac')
     elif input_format == "wav" and output_format == "bin":
         wav2file(in_file_name, output_type = 'bin')
-        # wav2dac(in_file_name)
-        # dac2bin(in_file_name)
     elif input_format == "bin" and output_format == "java":
         bin2java(in_file_name)
+    # elif input_format == "bin" and output_format == "wev":
+        # bin2wav(in_file_name)
     elif input_format == "java" and output_format == "bin":
         java2bin(in_file_name)
     # Additional format checks and function calls can be added here based on new functions.
