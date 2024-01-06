@@ -103,6 +103,7 @@ def write_fmt_header(file_out):
     sample_rate = 11025
     bits_per_sample = 8
     bytes_per_second = sample_rate * channels
+    # bytes_per_second = sample_rate * bits_per_sample * channels
     bytes_per_sample = channels
     # bytes_per_sample = bits_per_sample * channels
 
@@ -177,6 +178,7 @@ def wav2file(file_name, output_type='dac'):
                 write_data_to(file.name, data)
 
 def bin2wav(file_name):
+    
     chunk_size = os.path.getsize(file_name)
     if chunk_size == 0:
             print(f"File {file_name} is empty")
@@ -266,7 +268,15 @@ def java2bin(input_file_path, output_file_path=None):
 
     print(f"INFO: Binary file '{output_file_path}' created successfully")
 
-# Additional functions for wav, dac, and other formats can be defined here.
+def java2wav(input_file_path, output_file_path=None):
+    file_format = os.path.splitext(input_file_path)[1]
+    if file_format != ".java":
+        print(f"Invalid file format: {file_format}. Expected .java format.")
+        return
+    
+    base_name = os.path.splitext(os.path.basename(input_file_path))[0]  # Get the base name without extension    
+    java2bin(input_file_path)
+    bin2wav(f"{base_name}.bin")
 
 def show_help():
     help_message = """
@@ -314,6 +324,8 @@ if __name__ == "__main__":
         bin2wav(in_file_name)
     elif input_format == "java" and output_format == "bin":
         java2bin(in_file_name)
+    elif input_format == "java" and output_format == "wav":
+        java2wav(in_file_name)
     # Additional format checks and function calls can be added here based on new functions.
     else:
         print("Unsupported format conversion.")
