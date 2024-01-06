@@ -100,7 +100,8 @@ def write_fmt_header(file_out):
     chunk_size1 = 18
     format_code = 1
     channels = 1
-    sample_rate = 11025
+    # sample_rate = 11025
+    sample_rate = 3973
     bits_per_sample = 8
     bytes_per_second = sample_rate * channels
     # bytes_per_second = sample_rate * bits_per_sample * channels
@@ -177,6 +178,16 @@ def wav2file(file_name, output_type='dac'):
             else:
                 write_data_to(file.name, data)
 
+def wav2java(input_file_path):
+    file_format = os.path.splitext(input_file_path)[1]
+    if file_format != ".wav":
+        print(f"Invalid file format: {file_format}. Expected .wav format.")
+        return
+    
+    base_name = os.path.splitext(os.path.basename(input_file_path))[0]  # Get the base name without extension    
+    wav2file(input_file_path, 'bin')
+    bin2java(f"{base_name}.bin")
+
 def bin2wav(file_name):
     
     chunk_size = os.path.getsize(file_name)
@@ -213,7 +224,10 @@ def bin2java(input_file_path, output_file_path=None):
                 if i % 8 == 0:
                     file_out.write("\n   ") # New line every 8 bytes
 
-                file_out.write(f"{data[i]-128}, ")
+                if data[i] > 127:
+                    file_out.write(f"{data[i] - 256}, ")
+                else:
+                    file_out.write(f"{data[i]}, ")
             file_out.write("\n  };\n")
             file_out.write("}\n")
 
@@ -318,6 +332,8 @@ if __name__ == "__main__":
         wav2file(in_file_name, output_type = 'dac')
     elif input_format == "wav" and output_format == "bin":
         wav2file(in_file_name, output_type = 'bin')
+    elif input_format == "wav" and output_format == "java":
+        wav2java(in_file_name)
     elif input_format == "bin" and output_format == "java":
         bin2java(in_file_name)
     elif input_format == "bin" and output_format == "wav":

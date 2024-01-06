@@ -1,2 +1,5 @@
-.vscode/launch.json
+.vscode
 out
+*.wav
+*.java
+*.bin
