@@ -51,11 +51,22 @@ def read_data_header(file_in):
     #             file_out.write(", " + d)
     # return chunk_size
 
+def write_data_header(file_out, chunk_size):
+    print("Data Header:")
+
+    id='data'
+    file_out.write(id.encode())  
+    file_out.write(chunk_size.to_bytes(4, 'little'))
+
+    print("              ID:", id)
+    print("      Chunk Size:", chunk_size)
+    return chunk_size
+
 def read_fmt_header(file_in):
     print("FMT Header:")
 
     id_ = file_in.read(4).decode()  # Assuming the file is opened in binary mode
-    chunk_size = int.from_bytes(file_in.read(4), 'little') # read_int32(file_in)
+    chunk_size1 = int.from_bytes(file_in.read(4), 'little') # read_int32(file_in)
     format_code = int.from_bytes(file_in.read(2), 'little') # read_int16(file_in)
     channels = int.from_bytes(file_in.read(2), 'little')
     sample_rate = int.from_bytes(file_in.read(4), 'little')
@@ -68,7 +79,7 @@ def read_fmt_header(file_in):
         return 0
 
     print("              ID:", id_)
-    print("      Chunk Size:", chunk_size)
+    print("      Chunk Size:", chunk_size1)
     print("     Format Code:", format_code)
     print("         Channels:", channels)
     print("     Sample Rate:", sample_rate)
@@ -80,10 +91,42 @@ def read_fmt_header(file_in):
         print("This wav isn't in the right format.")
         return 0
 
-    return chunk_size
+    return chunk_size1
+
+def write_fmt_header(file_out):
+    print("FMT Header:")
+
+    id = "fmt "
+    chunk_size1 = 18
+    format_code = 1
+    channels = 1
+    sample_rate = 11025
+    bits_per_sample = 8
+    bytes_per_second = sample_rate * channels
+    bytes_per_sample = channels
+    # bytes_per_sample = bits_per_sample * channels
+
+    file_out.write(id.encode())
+    file_out.write(chunk_size1.to_bytes(4, 'little'))
+    file_out.write(format_code.to_bytes(2, 'little'))
+    file_out.write(channels.to_bytes(2, 'little'))
+    file_out.write(sample_rate.to_bytes(4, 'little'))
+    file_out.write(bytes_per_second.to_bytes(4, 'little'))
+    file_out.write(bytes_per_sample.to_bytes(2, 'little'))
+    file_out.write(bits_per_sample.to_bytes(4, 'little'))
+
+    print("              ID:", id)
+    print("      Chunk Size1:", chunk_size1)
+    print("     Format Code:", format_code)
+    print("         Channels:", channels)
+    print("     Sample Rate:", sample_rate)
+    print("Bytes Per Second:", bytes_per_second)
+    print("Bytes Per Sample:", bytes_per_sample)
+    print(" Bits Per Sample:", bits_per_sample)
 
 def read_riff_header(file_in):
     print("RIFF Header:")
+
     id = file_in.read(4).decode()
     if id != "RIFF":
         print("Not a RIFF file.")
@@ -93,10 +136,26 @@ def read_riff_header(file_in):
     if format != "WAVE":
         print("Not a WAV file.")
         return 0
+    
     print("              ID:", id)
     print("            Size:", wav_size)
     print("          Format:", format)
     return wav_size
+
+def write_riff_header(file_out, chunk_size):
+    print("RIFF Header:")
+
+    id = b'RIFF'
+    wav_size = 44 + chunk_size
+    format = b'WAVE'
+
+    file_out.write(id)
+    file_out.write(wav_size.to_bytes(4, 'little'))
+    file_out.write(format)
+
+    print("              ID:", id)
+    print("            Size:", wav_size)
+    print("          Format:", format)
 
 def wav2file(file_name, output_type='dac'):
     with open(file_name, 'rb') as file:
@@ -116,6 +175,23 @@ def wav2file(file_name, output_type='dac'):
                 write_data_to(file.name, data, type='bin')
             else:
                 write_data_to(file.name, data)
+
+def bin2wav(file_name):
+    chunk_size = os.path.getsize(file_name)
+    if chunk_size == 0:
+            print(f"File {file_name} is empty")
+            return
+
+    with open(file_name, 'rb') as source:
+        data = source.read()     # Чтение содержимого исходного файла
+    
+    base_name = os.path.splitext(file_name)[0]
+    with open(f"{base_name}.wav", 'wb') as file:
+        write_riff_header(file, chunk_size)
+        write_fmt_header(file)
+        write_data_header(file, chunk_size)
+        file.write(data)
+
     
 def bin2java(input_file_path, output_file_path=None):
     class_name = os.path.splitext(os.path.basename(input_file_path))[0]  # Get the base name without extension
@@ -234,8 +310,8 @@ if __name__ == "__main__":
         wav2file(in_file_name, output_type = 'bin')
     elif input_format == "bin" and output_format == "java":
         bin2java(in_file_name)
-    # elif input_format == "bin" and output_format == "wev":
-        # bin2wav(in_file_name)
+    elif input_format == "bin" and output_format == "wav":
+        bin2wav(in_file_name)
     elif input_format == "java" and output_format == "bin":
         java2bin(in_file_name)
     # Additional format checks and function calls can be added here based on new functions.
