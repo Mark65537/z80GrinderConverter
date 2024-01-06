@@ -101,7 +101,8 @@ def write_fmt_header(file_out):
     format_code = 1
     channels = 1
     # sample_rate = 11025
-    sample_rate = 3973
+    # sample_rate = 3973 # PlayTitleSample rate (DAC rate)
+    sample_rate = 872
     bits_per_sample = 8
     bytes_per_second = sample_rate * channels
     # bytes_per_second = sample_rate * bits_per_sample * channels
@@ -236,11 +237,6 @@ def bin2java(input_file_path, output_file_path=None):
         exit(1)
 
 def java2bin(input_file_path, output_file_path=None):
-    # print("INFO: java2bin - Reverse operation of bin2java")
-
-    # if len(sys.argv) < 2:
-    #     print(f"Usage: {sys.argv[0]} <javafile> [<binfile>]")
-    #     exit(0)
 
     # if len(sys.argv) == 3:
     #     bin_file_name = sys.argv[2]
@@ -270,7 +266,9 @@ def java2bin(input_file_path, output_file_path=None):
 
         for byte_value in byte_values:
             if byte_value:
-                byte_int = int(byte_value) + 128
+                byte_int = int(byte_value)
+                if byte_int < 0:
+                    byte_int += 256                   
                 data.append(byte_int)
 
 
