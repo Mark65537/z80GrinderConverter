@@ -232,7 +232,7 @@ def bin2java(input_file_path, output_file_path=None):
 
     except Exception as e:
         print(e)
-        exit(1)
+        sys.exit(1)
 
 def java2bin(input_file_path, output_file_path=None):
 
@@ -274,7 +274,7 @@ def java2bin(input_file_path, output_file_path=None):
             bin_file.write(data)
     except Exception as e:
         print(e)
-        exit(1)
+        sys.exit(1)
 
     print(f"INFO: Binary file '{output_file_path}' created successfully")
 
@@ -290,6 +290,7 @@ def java2wav(input_file_path, output_file_path=None):
 
 def show_help():
     help_message = """
+    INFO: bin2java - Copyright 2023 by Mark6    
     Usage: [script] -in <input_format> -out <output_format> <file_name>
 
     This script supports conversion between the following formats: wav, dac, bin, java
@@ -321,7 +322,7 @@ if __name__ == "__main__":
         output_format = sys.argv[output_index]
     except (ValueError, IndexError):
         show_help()
-        exit(1)
+        sys.exit(1)
     
     # Add checks for formats and call the respective function based on the input and output formats
     if input_format == "wav" and output_format == "dac" or output_format == "asm":
