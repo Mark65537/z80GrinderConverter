@@ -17,8 +17,6 @@ def write_data_to(file_name, data, type='dac'):
         with open(f"{base_name}.{type}", "wb") as file_out:
             for d in data:
                 file_out.write(bytes([d]))
-
-
     
             
 def read_data_header(file_in):
@@ -308,7 +306,7 @@ def show_help():
 if __name__ == "__main__":
     if len(sys.argv) < 5 or '-h' in sys.argv or '--help' in sys.argv:
         show_help()
-        exit(0)
+        sys.exit(0)
     
     # input_format = None
     # output_format = None

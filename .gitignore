@@ -1,5 +1,6 @@
 .vscode
 out
+dist
 *.wav
 *.java
 *.bin
