@@ -307,18 +307,23 @@ def show_help():
     """
     print(help_message)
 
-if __name__ == "__main__":
-    if len(sys.argv) < 5 or '-h' in sys.argv or '--help' in sys.argv:
+def main():
+    if len(sys.argv) < 4 or '-h' in sys.argv or '--help' in sys.argv:
         show_help()
         sys.exit(0)
 
 
     # Parse the command line arguments
     try:
-        input_index = sys.argv.index("-in") + 1
+        if "-in" in sys.argv:
+            input_index = sys.argv.index("-in") + 1
+            input_format = sys.argv[input_index]
+            in_file_name = sys.argv[5]        
+        else:
+            in_file_name = sys.argv[3]        
+            input_format = in_file_name.split(".")[-1]
+                    
         output_index = sys.argv.index("-out") + 1
-        in_file_name = sys.argv[5]
-        input_format = sys.argv[input_index]
         output_format = sys.argv[output_index]
     except (ValueError, IndexError):
         show_help()
@@ -343,3 +348,6 @@ if __name__ == "__main__":
     else:
         print("Unsupported format conversion.")
         show_help()
+
+if __name__ == "__main__":
+    main()
