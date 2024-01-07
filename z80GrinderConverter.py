@@ -1,10 +1,11 @@
 import os
 import sys
 
+templates_dir = "templates\\"
 def write_data_to(file_name, data, type='dac'):
     base_name = os.path.splitext(file_name)[0]
     if type == 'dac':
-        with open(base_name + "_dac.asm", "w") as file_out:
+        with open(f"{base_name}_{type}.asm", "w") as file_out:
             for i in range(len(data)):
                 if i % 8 == 0:
                     file_out.write("\n  db")
@@ -14,9 +15,11 @@ def write_data_to(file_name, data, type='dac'):
                 else:
                     file_out.write(", " + d)
     elif type == 'bin':
+        with open(f"{templates_dir}DAC.bin", "rb") as temp_file:
+            template_data = temp_file.read()
         with open(f"{base_name}.{type}", "wb") as file_out:
-            for d in data:
-                file_out.write(bytes([d]))
+            file_out.write(template_data)
+            file_out.write(bytes(data))
     
             
 def read_data_header(file_in):
@@ -308,10 +311,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 5 or '-h' in sys.argv or '--help' in sys.argv:
         show_help()
         sys.exit(0)
-    
-    # input_format = None
-    # output_format = None
-    # file_name = None
+
 
     # Parse the command line arguments
     try:

@@ -4,4 +4,5 @@ dist
 *.wav
 *.java
 *.bin
+*.exe
 zoop.java
