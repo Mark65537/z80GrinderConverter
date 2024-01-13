@@ -1,0 +1,1 @@
+~dp0\sox %1% -r 3973 result.wav

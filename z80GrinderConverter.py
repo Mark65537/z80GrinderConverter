@@ -2,9 +2,19 @@ import os
 import sys
 
 templates_dir = "templates\\"
+
+def check_file_size(file_name):
+    max_size = 8 * 1024
+    file_size = os.path.getsize(file_name)
+    
+    if file_size > max_size:
+        print(f"Warning: The converted file ({file_name}) should not exceed 8KB in size.")
+        
 def write_data_to(file_name, data, type='dac'):
     base_name = os.path.splitext(file_name)[0]
+
     if type == 'dac':
+        output_file_name = f"{base_name}_{type}.asm"
         with open(f"{base_name}_{type}.asm", "w") as file_out:
             for i in range(len(data)):
                 if i % 8 == 0:
@@ -15,11 +25,19 @@ def write_data_to(file_name, data, type='dac'):
                 else:
                     file_out.write(", " + d)
     elif type == 'bin':
-        with open(f"{templates_dir}DAC.bin", "rb") as temp_file:
-            template_data = temp_file.read()
-        with open(f"{base_name}.{type}", "wb") as file_out:
-            file_out.write(template_data)
+        # max_size = 8 * 1024
+        # template_size = os.path.getsize(f"{templates_dir}DAC.bin")
+        # if (template_size + len(data)) < max_size:
+            # with open(f"{templates_dir}DAC.bin", "rb") as temp_file:
+            #     template_data = temp_file.read()
+
+        output_file_name = f"{base_name}.{type}"
+        with open(output_file_name, "wb") as file_out:
+            # if (template_size + len(data)) < max_size:
+            #     file_out.write(template_data)
             file_out.write(bytes(data))
+
+        check_file_size(output_file_name)
     
             
 def read_data_header(file_in):
@@ -38,20 +56,6 @@ def read_data_header(file_in):
     print("      Chunk Size:", chunk_size)
     return chunk_size
 
-
-    # base_name = os.path.splitext(file_in.name)[0]
-    # with open(base_name + "_dac.asm", "w") as file_out:
-    #     for i in range(len(data)):
-    #         if i % 8 == 0:
-    #             file_out.write("\n  db")
-                
-    #         d = "0x{:02x}".format(data[i])
-    #         if i % 8 == 0:
-    #             file_out.write(" " + d)
-    #         else:
-    #             file_out.write(", " + d)
-    # return chunk_size
-
 def write_data_header(file_out, chunk_size):
     print("Data Header:")
 
@@ -66,7 +70,7 @@ def write_data_header(file_out, chunk_size):
 def read_fmt_header(file_in):
     print("FMT Header:")
 
-    id_ = file_in.read(4).decode()  # Assuming the file is opened in binary mode
+    id = file_in.read(4).decode()  # Assuming the file is opened in binary mode
     chunk_size1 = int.from_bytes(file_in.read(4), 'little') # read_int32(file_in)
     format_code = int.from_bytes(file_in.read(2), 'little') # read_int16(file_in)
     channels = int.from_bytes(file_in.read(2), 'little')
@@ -75,11 +79,11 @@ def read_fmt_header(file_in):
     bytes_per_sample = int.from_bytes(file_in.read(2), 'little')
     bits_per_sample = int.from_bytes(file_in.read(2), 'little')
 
-    if id_ != "fmt ":
-        print("Unknown chunk id " + id_)
+    if id != "fmt ":
+        print("Unknown chunk id " + id)
         return 0
 
-    print("              ID:", id_)
+    print("              ID:", id)
     print("      Chunk Size:", chunk_size1)
     print("     Format Code:", format_code)
     print("         Channels:", channels)
@@ -162,23 +166,27 @@ def write_riff_header(file_out, chunk_size):
     print("          Format:", format)
 
 def wav2file(file_name, output_type='dac'):
+    data=read_headers_and_return_data(file_name)
+    # Choose the type based on the output_type parameter
+    if output_type == 'bin':
+        write_data_to(file_name, data, type='bin')
+    else:
+        write_data_to(file_name, data)
+
+def read_headers_and_return_data(file_name):
     with open(file_name, 'rb') as file:
         if read_riff_header(file) == 0:
             return
         if read_fmt_header(file) == 0:
             return
-
         chunk_size = read_data_header(file)
         if chunk_size == 0:
             return
         else:
             data = bytearray(chunk_size)
             file.readinto(data)
-            # Choose the type based on the output_type parameter
-            if output_type == 'bin':
-                write_data_to(file.name, data, type='bin')
-            else:
-                write_data_to(file.name, data)
+            return data
+
 
 def wav2java(input_file_path):
     file_format = os.path.splitext(input_file_path)[1]
@@ -186,9 +194,26 @@ def wav2java(input_file_path):
         print(f"Invalid file format: {file_format}. Expected .wav format.")
         return
     
-    base_name = os.path.splitext(os.path.basename(input_file_path))[0]  # Get the base name without extension    
-    wav2file(input_file_path, 'bin')
-    bin2java(f"{base_name}.bin")
+    # Get the base name without extension
+    base_name = os.path.splitext(os.path.basename(input_file_path))[0]
+    
+    # Define constants
+    max_size = 8 * 1024 * 4
+    template_size = os.path.getsize(f"{templates_dir}DAC.bin")
+    
+    # Get input file size and read headers
+    input_file_size = os.path.getsize(input_file_path)
+    data = read_headers_and_return_data(input_file_path)
+
+    if (template_size + input_file_size) > max_size:
+        # Split data into chunks and write to files
+        for i in range(0, input_file_size, max_size):
+            chunck_data = data[i:i+max_size]
+            write_data_to(f'{base_name}{i//max_size}', chunck_data, type='bin')
+            bin2java(f"{base_name}{i//max_size}.bin")
+    else:
+        wav2file(input_file_path, 'bin')
+        bin2java(f"{base_name}.bin")
 
 def bin2wav(file_name):
     
@@ -208,7 +233,7 @@ def bin2wav(file_name):
         file.write(data)
 
     
-def bin2java(input_file_path, output_file_path=None):
+def bin2java(input_file_path, data_array_type='int', output_file_path=None):
     class_name = os.path.splitext(os.path.basename(input_file_path))[0]  # Get the base name without extension
     if output_file_path is None:
         output_file_path = f"{class_name}.java"
@@ -220,16 +245,26 @@ def bin2java(input_file_path, output_file_path=None):
         file_size = len(data)
 
         with open(output_file_path, "w") as file_out:
+            file_out.write(f"package res.music;\n\n")
             file_out.write(f"public class {class_name}\n{{\n")
-            file_out.write("  public static byte[] z80_code =\n  {\n")
-            for i in range(file_size):
-                if i % 8 == 0:
+            file_out.write("  public static void Init() {}\n\n")
+            file_out.write(f"  public static {data_array_type}[] z80_code =\n  {{\n")
+            for i in range(0,file_size, 4):
+                if i % 24 == 0:
                     file_out.write("\n   ") # New line every 8 bytes
 
-                if data[i] > 127:
-                    file_out.write(f"{data[i] - 256}, ")
+                if data_array_type == 'int':
+                    bytes_to_write = data[i:i+4]  # Get 4 bytes at a time
+                    int_value = int.from_bytes(bytes_to_write, byteorder='big')  # Convert bytes to integer
+                    file_out.write(f"0x{int_value:08x}, ")
+                elif data_array_type == 'byte':
+                    if data[i] > 127:
+                        file_out.write(f"{data[i] - 256}, ")
+                    else:
+                        file_out.write(f"{data[i]}, ")
                 else:
-                    file_out.write(f"{data[i]}, ")
+                    print(f"Invalid data type: {data_array_type}")
+                    sys.exit(1)
             file_out.write("\n  };\n")
             file_out.write("}\n")
 
@@ -336,7 +371,7 @@ def main():
         wav2file(in_file_name, output_type = 'bin')
     elif input_format == "wav" and output_format == "java":
         wav2java(in_file_name)
-    elif input_format == "bin" and output_format == "java":
+    elif input_format == "bin" or input_format == "ram" and output_format == "java":
         bin2java(in_file_name)
     elif input_format == "bin" and output_format == "wav":
         bin2wav(in_file_name)
