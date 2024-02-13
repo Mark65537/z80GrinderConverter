@@ -198,22 +198,24 @@ def wav2java(input_file_path):
     base_name = os.path.splitext(os.path.basename(input_file_path))[0]
     
     # Define constants
-    max_size = 8 * 1024 * 4
+    max_int_size = 32 * 1024 + 180
+    max_byte_size = 8 * 1024
     template_size = os.path.getsize(f"{templates_dir}DAC.bin")
     
     # Get input file size and read headers
     input_file_size = os.path.getsize(input_file_path)
     data = read_headers_and_return_data(input_file_path)
+    data_size = len(data)
 
-    if (template_size + input_file_size) > max_size:
+    if (template_size + data_size) > max_int_size:
         # Split data into chunks and write to files
-        for i in range(0, input_file_size, max_size):
-            chunck_data = data[i:i+max_size]
-            write_data_to(f'{base_name}{i//max_size}', chunck_data, type='bin')
-            bin2java(f"{base_name}{i//max_size}.bin")
-    else:
-        wav2file(input_file_path, 'bin')
-        bin2java(f"{base_name}.bin")
+        for i in range(0, data, max_int_size):
+            chunck_data = data[i:i+max_int_size]
+            write_data_to(f'{base_name}{i//max_int_size}', chunck_data, type='bin')
+            bin2java(f"{base_name}{i//max_int_size}.bin")
+    elif (template_size + data_size) <= max_byte_size:
+        write_data_to(f'{base_name}', data, type='bin')
+        bin2java(f"{base_name}.bin", data_array_type='byte')
 
 def bin2wav(file_name):
     
@@ -251,7 +253,7 @@ def bin2java(input_file_path, data_array_type='int', output_file_path=None):
             file_out.write(f"  public static {data_array_type}[] z80_code =\n  {{\n")
             for i in range(0,file_size, 4):
                 if i % 24 == 0:
-                    file_out.write("\n   ") # New line every 8 bytes
+                    file_out.write("\n   ") 
 
                 if data_array_type == 'int':
                     bytes_to_write = data[i:i+4]  # Get 4 bytes at a time

@@ -1,0 +1,16 @@
+// herz = -256.6 * byte + 37246
+[
+    {"byte": 0, "herz": 1046},
+    {"byte": 1, "herz": 33144},
+    {"byte": 2, "herz": 29583},
+    {"byte": 3, "herz": 26713},
+    {"byte": 15, "herz": 12341},
+    {"byte": 16, "herz": 11814},
+    {"byte": 17, "herz": 11328},
+    {"byte": 18, "herz": 10880},
+    {"byte": 20, "herz": 10083},
+    {"byte": 30, "herz": 7381},
+    {"byte": 62, "herz": 3973},
+    {"byte": 70, "herz": 3562},
+    {"byte": 90, "herz": 2830}
+]
