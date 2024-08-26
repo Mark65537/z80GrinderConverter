@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 
@@ -328,49 +329,39 @@ def java2wav(input_file_path, output_file_path=None):
     java2bin(input_file_path)
     bin2wav(f"{base_name}.bin")
 
-def show_help():
-    help_message = """
-    INFO: bin2java - Copyright 2023 by Mark6    
-    Usage: [script] -in <input_format> -out <output_format> <file_name>
-
-    This script supports conversion between the following formats: wav, dac, bin, java
-
-    Examples:
-    [script] -in bin -out java somefile.bin    # Convert from BIN to Java
-    [script] -in java -out bin somefile.java   # Convert from Java to BIN
-    [script] -in wav -out bin somefile.wav     # Convert from WAV to BIN
-    [script] -in dac -out bin somefile_dac.asm     # Convert from DAC to BIN
-    ... and so on for other supported format conversions.
-    """
-    print(help_message)
-
 def main():
-    if len(sys.argv) < 4 or '-h' in sys.argv or '--help' in sys.argv:
-        show_help()
-        sys.exit(0)
+    parser = argparse.ArgumentParser(
+        description="Convert files between different formats: wav, dac, bin, java."
+    )
 
+    parser.add_argument(
+        '-in', 
+        dest='input_format', 
+        required=True, 
+        help="Input format (e.g., wav, bin, java)"
+    )
+    parser.add_argument(
+        '-out', 
+        dest='output_format', 
+        required=True, 
+        help="Output format (e.g., dac, bin, java)"
+    )
+    parser.add_argument(
+        'file_name', 
+        help="The name of the file to be converted"
+    )
 
-    # Parse the command line arguments
-    try:
-        if "-in" in sys.argv:
-            input_index = sys.argv.index("-in") + 1
-            input_format = sys.argv[input_index]
-            in_file_name = sys.argv[5]        
-        else:
-            in_file_name = sys.argv[3]        
-            input_format = in_file_name.split(".")[-1]
-                    
-        output_index = sys.argv.index("-out") + 1
-        output_format = sys.argv[output_index]
-    except (ValueError, IndexError):
-        show_help()
-        sys.exit(1)
+    args = parser.parse_args()
+
+    input_format = args.input_format
+    output_format = args.output_format
+    in_file_name = args.file_name
     
     # Add checks for formats and call the respective function based on the input and output formats
     if input_format == "wav" and output_format == "dac" or output_format == "asm":
-        wav2file(in_file_name, output_type = 'dac')
+        wav2file(in_file_name, output_type='dac')
     elif input_format == "wav" and output_format == "bin":
-        wav2file(in_file_name, output_type = 'bin')
+        wav2file(in_file_name, output_type='bin')
     elif input_format == "wav" and output_format == "java":
         wav2java(in_file_name)
     elif input_format == "bin" or input_format == "ram" and output_format == "java":
@@ -381,10 +372,10 @@ def main():
         java2bin(in_file_name)
     elif input_format == "java" and output_format == "wav":
         java2wav(in_file_name)
-    # Additional format checks and function calls can be added here based on new functions.
     else:
         print("Unsupported format conversion.")
-        show_help()
+        parser.print_help()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
